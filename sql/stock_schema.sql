@@ -1,5 +1,8 @@
-create database if not exists stockdata;
+create database if not exists stockdata; -- this is the main database
 use stockdata;
+/*
+	The table holding the main stock information.
+*/
 create table if not exists pricedata (
 	ticker varchar(50) primary key not null,
 	date int not null,
