@@ -10,5 +10,6 @@ create table if not exists pricedata (
 	openask float not null,
 	closebid float not null,
 	closeask float not null,
-	volume int not null
+	volume int not null,
+	some_more data
 );
