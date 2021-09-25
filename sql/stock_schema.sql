@@ -30,3 +30,4 @@ create table if not exists pricedata (
 	CONSTRAINT `fk_date`
     	FOREIGN KEY (dateid) REFERENCES dates (dateid)
 );
+
