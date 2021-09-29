@@ -10,7 +10,7 @@ create table if not exists tickers (
 create table if not exists dates (
 	dateid int primary key not null auto_increment,
 	datestring int not null,
-4	constraint unique_datestring unique(datestring)
+    constraint unique_datestring unique(datestring)
 );
 
 /*
@@ -23,7 +23,7 @@ create table if not exists pricedata (
 	openask float not null,
 	closebid float not null,
 	closeask float not null,
-	volume int not null,
+	volume bigint not null,
 	primary key(tickerid, dateid),
 	CONSTRAINT `fk_ticker`
     	FOREIGN KEY (tickerid) REFERENCES tickers (tickerid),
