@@ -1,7 +1,9 @@
+#!/usr/bin/env python3
 from typing import List
-
+from pathlib import Path
 import mariadb
 import sys
+from datetime import datetime
 
 ticker_cache = {}
 
@@ -19,20 +21,17 @@ def ticker_exists(ticker: str, conn) -> int:
     return 0
 
 
-
-
-
 def enter_ticker(ticker: str, conn) -> int:
     ticker_id = ticker_exists(ticker, conn)
     if ticker_id == 0:
         sql = f"insert into tickers(ticker) values('{ticker}');"
         cur = conn.cursor()
         cur.execute(sql)
-        print(f"{ticker} entered into db.")
     return ticker_exists(ticker, conn)
 
 
 date_cache = {}
+
 
 def date_exists(date: str, conn) -> int:
     if date in date_cache:
@@ -53,8 +52,8 @@ def enter_date(date: str, conn) -> int:
         sql = f"insert into dates(datestring) values('{date}');"
         cur = conn.cursor()
         cur.execute(sql)
-        print(f"{date} entered into db.")
     return date_exists(date, conn)
+
 
 # Connect to MariaDB Platform
 try:
@@ -73,7 +72,6 @@ except mariadb.Error as e:
 # Get Cursor
 
 print("connection obtained.")
-data_file = "/home/rohan/stock_analysis/INDEX_20210917.txt"
 
 
 def price_data_exists(ticker_id: int, date_id: int, conn) -> bool:
@@ -86,7 +84,13 @@ def price_data_exists(ticker_id: int, date_id: int, conn) -> bool:
     """
     sql = "select * from pricedata where tickerid = ? and dateid = ?;"
     cur = conn.cursor()
-    cur.execute(sql, (ticker_id, date_id, ))
+    cur.execute(
+        sql,
+        (
+            ticker_id,
+            date_id,
+        ),
+    )
     result = cur.fetchone()
     if result:
         return True
@@ -96,7 +100,13 @@ def price_data_exists(ticker_id: int, date_id: int, conn) -> bool:
 def delete_price_data(ticker_id: int, date_id: int, conn) -> None:
     sql = f"delete from pricedata where tickerid = ? and dateid = ?"
     cur = conn.cursor()
-    cur.execute(sql, (ticker_id, date_id, ))
+    cur.execute(
+        sql,
+        (
+            ticker_id,
+            date_id,
+        ),
+    )
 
 
 def enter_price_data(ticker_id: int, date_id: int, parts: List[str], conn) -> int:
@@ -117,13 +127,29 @@ def enter_price_data(ticker_id: int, date_id: int, parts: List[str], conn) -> in
     cur.execute(sql)
 
 
-for line in open(data_file):
-    line = line.strip()
-    parts = line.split(",")
-    ticker = parts[0]
-    date = parts[1]
-    print(f"ticker = {ticker} on {line}")
-    ticker_id = enter_ticker(ticker, conn)
-    print(f"date = {date} on {line}")
-    date_id = enter_date(date, conn)
-    enter_price_data(ticker_id, date_id, parts, conn)
+def load_file(filename: str) -> None:
+    print(f"starting loading of file: {filename}")
+    counter = 0
+    for line in open(filename):
+        line = line.strip()
+        parts = line.split(",")
+        ticker = parts[0]
+        date = parts[1]
+        ticker_id = enter_ticker(ticker, conn)
+        formatted_date = datetime.strptime(date, "%d-%b-%Y").strftime("%Y%m%d")
+        date_id = enter_date(formatted_date, conn)
+        enter_price_data(ticker_id, date_id, parts, conn)
+        counter += 1
+        if counter % 100 == 0:
+            print(counter)
+    print(f"Completed loading of file: {filename}")
+
+
+if __name__ == "__main__":
+    print(sys.argv)
+    if len(sys.argv) == 2:
+        print(f"getting all files from path: {sys.argv[1]}")
+        p = Path(sys.argv[1])
+        for f in p.iterdir():
+            if f.is_file():
+                load_file(str(f))
