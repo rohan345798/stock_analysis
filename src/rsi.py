@@ -1,29 +1,17 @@
-from typing import Iterable
-
 def calculate_rsi(prices: list[float]) -> float:
-    gains = []
-    losses = []
-    for i in prices:
-        if i > 0:
-            gains.append(i)
-        elif i < 0:
-            losses.append(i*-1)
+    average_gain = 0
+    average_loss = 0
 
-    avg_gain = 0
-    avg_loss = 0
-    for i in gains:
-        avg_gain += i
-    for i in losses:
-        avg_loss += i
-    avg_gain /= len(prices)
-    avg_loss /= len(prices)
+    for today, tomorrow in zip(prices, prices[1:]): #iterating two vars through prices one index apart
+        if tomorrow > today:
+            average_gain += tomorrow / today - 1 #percent calc
+        else:
+            average_loss += 1 - tomorrow / today #percent calc
 
-    if avg_loss == 0:
-        if avg_gain == 0:
+    if average_loss == 0:#edge cases for if it never goes up or down
+        if average_gain == 0:
             return 50.0
         else:
             return 100.0
-    else:
-        return 100 - (100/(1+(avg_gain/avg_loss)))
 
-
+    return 100 - (100 / (1 + average_gain / average_loss)) #formula
