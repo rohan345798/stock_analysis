@@ -7,6 +7,8 @@ from stockdate import StockDate
 
 # process the table in a way that gives us a list of tuples like [(ticker, [prices on the dates between 6/14/2001 and 6/28/2001])]
 # use that to make a dictionary like {ticker, 14-day RSI}
+from pricedatacache import get_price_data, get_stock_prices
+
 ticker_rsi = {}
 # find the ticker with the lowest RSI and buy as much as possible
 # find the day that the RSI of said ticker goes above 70, and sell everything
@@ -60,7 +62,9 @@ def get_lowest_rsi_ticker(stock_date: StockDate) -> RsiData:
     :return:
     """
     last_15_days = get_last_15_days(stock_date)
-    pass
+    prices = get_stock_prices("BBD", last_15_days)
+    ticker_rsi = calculate_rsi(prices)
+    print(ticker_rsi)
 
 
 def purchase(rsi_data, current_investment) -> Portfolio:
@@ -85,17 +89,17 @@ if __name__ == "__main__":
     ret_data = get_last_15_days(start_date)
     print(ret_data)
     while current_investment > 0 and current_date.date < last_date.date:
-        # if current_portfolio:
-        #     # check if the rsi of the current held ticker
-        #     # if it is over 70 sell.
-        #     rsi_data = get_ticker_rsi(current_portfolio.ticker)
-        #     if rsi_data.rsi >= 70:
-        #         current_investment = sell(current_portfolio)
-        # else:
-        #     # if we do have any investment find the ticker with lowest RSI
-        #     # and buy it
-        #     rsi_data = get_lowest_rsi_ticker(current_date)
-        #     current_portfolio = purchase(rsi_data, current_investment)
+        if current_portfolio:
+            # check if the rsi of the current held ticker
+            # if it is over 70 sell.
+            rsi_data = get_ticker_rsi(current_portfolio.ticker)
+            if rsi_data.rsi >= 70:
+                current_investment = sell(current_portfolio)
+        else:
+            # if we do have any investment find the ticker with lowest RSI
+            # and buy it
+            rsi_data = get_lowest_rsi_ticker(current_date)
+            current_portfolio = purchase(rsi_data, current_investment)
         logger.info(f"Date = {current_date}, Portfolio = {current_portfolio}")
         next_date = get_next_business_day(current_date)
         current_date = StockDate(date(next_date.year, next_date.month, next_date.day))

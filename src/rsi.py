@@ -1,4 +1,6 @@
-def calculate_rsi(prices: list[float]) -> float:
+from typing import List
+
+def calculate_rsi(prices: List[float]) -> float:
     average_gain = 0
     average_loss = 0
 

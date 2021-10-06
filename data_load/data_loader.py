@@ -92,9 +92,7 @@ def price_data_exists(ticker_id: int, date_id: int, conn) -> bool:
         ),
     )
     result = cur.fetchone()
-    if result:
-        return True
-    return False
+    return result
 
 
 def delete_price_data(ticker_id: int, date_id: int, conn) -> None:
