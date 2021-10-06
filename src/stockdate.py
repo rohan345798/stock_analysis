@@ -10,6 +10,10 @@ class StockDate:
         self._date = this_date
 
     @property
+    def date(self):
+        return self._date
+
+    @property
     def year(self):
         return self._date.year
 
@@ -24,6 +28,12 @@ class StockDate:
     def ago_days(self, num_days):
         return StockDate(self._date - timedelta(days=num_days))
 
+    def days_forward(self, num_days):
+        return StockDate(self._date + timedelta(days=num_days))
+
     @property
     def yyyy_mm_dd(self) -> str:
         return f"{self.year}-{self.month}-{self.day}"
+
+    def __str__(self):
+        return str(self.date)
