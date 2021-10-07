@@ -3,12 +3,15 @@ from typing import Dict, Set, List
 import math
 import mariadb
 import sys
+from dataclasses import dataclass
 
 from data_load.data_loader import ticker_exists, date_exists, price_data_exists
 
+all_tickers_loaded = False
 date_cache: Dict[date, int] = {}
 ticker_cache: Dict[str, int] = {}
 price_data_cache: Dict[int, Dict[int, float]] = {}
+
 
 
 # Connect to MariaDB Platform
@@ -28,6 +31,21 @@ except mariadb.Error as e:
 
 def to_sql_date(d) -> str:
     return d.strftime("%Y%m%d")
+
+
+def get_all_tickers() -> List[str]:
+    global all_tickers_loaded
+    if not all_tickers_loaded:
+        sql = "select tickerid, ticker from tickers"
+        cur = conn.cursor()
+        cur.execute(sql)
+        result = cur.fetchone()
+        while result:
+            ticker_cache[result[1]] = result[0]
+            result = cur.fetchone()
+        all_tickers_loaded = True
+    return list(ticker_cache.keys())
+
 
 
 def get_price_data(ticker, d) -> float:

@@ -7,7 +7,7 @@ from stockdate import StockDate
 
 # process the table in a way that gives us a list of tuples like [(ticker, [prices on the dates between 6/14/2001 and 6/28/2001])]
 # use that to make a dictionary like {ticker, 14-day RSI}
-from pricedatacache import get_price_data, get_stock_prices
+from pricedatacache import get_price_data, get_stock_prices, get_all_tickers
 
 ticker_rsi = {}
 # find the ticker with the lowest RSI and buy as much as possible
@@ -62,9 +62,29 @@ def get_lowest_rsi_ticker(stock_date: StockDate) -> RsiData:
     :return:
     """
     last_15_days = get_last_15_days(stock_date)
-    prices = get_stock_prices("BBD", last_15_days)
-    ticker_rsi = calculate_rsi(prices)
-    print(ticker_rsi)
+    all_tickers = get_all_tickers()
+    start_rsi = 100
+    start_stock = set()
+    for ticker in all_tickers:
+        prices = get_stock_prices(ticker, last_15_days)
+        if any(price == -1 for price in prices):
+            # logger.info(f"Ignored prices for {ticker}. prices = {prices}")
+            continue
+        this_rsi = calculate_rsi(prices)
+        logger.info(f"Calculated rsi = {this_rsi} for ticker = {ticker}, prices = {prices}")
+        if this_rsi < start_rsi:
+            start_rsi = this_rsi
+            start_stock = set()
+            start_stock.add(ticker)
+            logger.info(f"Updated --------------------- Current Lowest rsi = {start_rsi} for ticker = {start_stock}")
+        elif this_rsi == start_rsi:
+            start_stock.add(ticker)
+            logger.info(f"Added --------------------- Current Lowest rsi = {start_rsi} for ticker = {start_stock}")
+
+    print(start_stock)
+    pass
+
+
 
 
 def purchase(rsi_data, current_investment) -> Portfolio:
