@@ -46,6 +46,7 @@ class RsiData:
     ticker: str
     rsi: float
     price: float
+    volume: int
     date: StockDate
 
 
@@ -63,28 +64,38 @@ def get_lowest_rsi_ticker(stock_date: StockDate) -> RsiData:
     """
     last_15_days = get_last_15_days(stock_date)
     all_tickers = get_all_tickers()
-    start_rsi = 100
-    start_stock = set()
+    rsi_data_info = None
     for ticker in all_tickers:
-        prices = get_stock_prices(ticker, last_15_days)
-        if any(price == -1 for price in prices):
+        price_volumes = get_stock_prices(ticker, last_15_days)
+        if any(price[0] == -1 for price in price_volumes):
             # logger.info(f"Ignored prices for {ticker}. prices = {prices}")
             continue
-        this_rsi = calculate_rsi(prices)
-        logger.info(f"Calculated rsi = {this_rsi} for ticker = {ticker}, prices = {prices}")
-        if this_rsi < start_rsi:
-            start_rsi = this_rsi
-            start_stock = set()
-            start_stock.add(ticker)
-            logger.info(f"Updated --------------------- Current Lowest rsi = {start_rsi} for ticker = {start_stock}")
-        elif this_rsi == start_rsi:
-            start_stock.add(ticker)
-            logger.info(f"Added --------------------- Current Lowest rsi = {start_rsi} for ticker = {start_stock}")
+        this_rsi = calculate_rsi([price[0] for price in price_volumes])
+        # logger.info(f"Calculated rsi = {this_rsi} for ticker = {ticker}, prices = {price_volumes}")
+        if rsi_data_info is None or this_rsi < rsi_data_info.rsi:
+            price, volume = get_price_data(ticker, stock_date.date)
+            rsi_data_info = RsiData(ticker, this_rsi, price, volume, stock_date)
+            start_stock_volume = sum([price[1] for price in price_volumes])
+            logger.info(
+                f"Updated --------------------- Current Lowest rsi = {rsi_data_info}"
+            )
+        elif this_rsi == rsi_data_info.rsi:
+            # the rsi of this stock and the last stock are the same.
+            # so calculate the volumes
+            logger.info(f"Got ticker = {ticker} with same rsi Checking volumes.")
+            new_stock_volume = sum([price[1] for price in price_volumes])
+            if new_stock_volume >= rsi_data_info.volume:
+                logger.info(
+                    f"Old volume = {rsi_data_info.volume} smaller than {new_stock_volume}. Updating..."
+                )
+                price, volume = get_price_data(ticker, stock_date.date)
+                rsi_data_info = RsiData(ticker, this_rsi, price, volume, stock_date)
+                logger.info(
+                    f"Added --------------------- Current Lowest rsi = {rsi_data_info}"
+                )
 
-    print(start_stock)
-    pass
-
-
+    print(rsi_data_info)
+    return rsi_data_info
 
 
 def purchase(rsi_data, current_investment) -> Portfolio:

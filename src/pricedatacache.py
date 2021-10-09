@@ -1,5 +1,5 @@
 from datetime import date
-from typing import Dict, Set, List
+from typing import Dict, Set, List, Tuple
 import math
 import mariadb
 import sys
@@ -7,11 +7,12 @@ from dataclasses import dataclass
 
 from data_load.data_loader import ticker_exists, date_exists, price_data_exists
 
+PriceVolumeTuple = Tuple[float, int]
+
 all_tickers_loaded = False
 date_cache: Dict[date, int] = {}
 ticker_cache: Dict[str, int] = {}
-price_data_cache: Dict[int, Dict[int, float]] = {}
-
+price_data_cache: Dict[int, Dict[int, PriceVolumeTuple]] = {}
 
 
 # Connect to MariaDB Platform
@@ -47,8 +48,7 @@ def get_all_tickers() -> List[str]:
     return list(ticker_cache.keys())
 
 
-
-def get_price_data(ticker, d) -> float:
+def get_price_data(ticker, d) -> PriceVolumeTuple:
     if ticker not in ticker_cache:
         ticker_id = ticker_exists(ticker, conn)
         ticker_cache[ticker] = ticker_id
@@ -59,7 +59,7 @@ def get_price_data(ticker, d) -> float:
     date_id = date_cache[d]
 
     if ticker_id == 0 or date_id == 0:
-        return -1
+        return -1, -1
 
     if ticker_id in price_data_cache and date_id in price_data_cache[ticker_id]:
         return price_data_cache[ticker_id][date_id]
@@ -69,18 +69,20 @@ def get_price_data(ticker, d) -> float:
     if date_id not in price_data_cache[ticker_id]:
         result = price_data_exists(ticker_id, date_id, conn)
         if result:
-            price_data_cache[ticker_id][date_id] = round(result[4], 4)
+            price_data_cache[ticker_id][date_id] = (round(result[4], 4), result[6])
         else:
-            price_data_cache[ticker_id][date_id] = -1
+            price_data_cache[ticker_id][date_id] = (-1, -1)
     return price_data_cache[ticker_id][date_id]
 
 
-def get_stock_prices(ticker: str, dates: List[date]) -> List[float]:
-    ret_data: List[float] = []
+def get_stock_prices(ticker: str, dates: List[date]) -> List[PriceVolumeTuple]:
+    ret_data: List[PriceVolumeTuple] = []
     for d in dates:
         ret_data.append(get_price_data(ticker, d))
     return ret_data
 
 
 if __name__ == "__main__":
-    get_stock_prices("AXL", )
+    get_stock_prices(
+        "AXL",
+    )
