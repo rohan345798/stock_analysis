@@ -147,10 +147,6 @@ def get_ticker_rsi(ticker: str, stock_date: StockDate) -> RsiData:
     return RsiData(ticker, rsi, price, volume, stock_date)
 
 
-def sell(current_portfolio) -> float:
-    pass
-
-
 if __name__ == "__main__":
     start_date = StockDate(date(year=2001, month=6, day=28))
     current_date = StockDate(date(year=2001, month=6, day=28))
