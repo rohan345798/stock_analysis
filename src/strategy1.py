@@ -2,6 +2,7 @@ from loguru import logger
 from datetime import date
 from dataclasses import dataclass
 import pandas_market_calendars as mcal
+import math
 from rsi import calculate_rsi
 from stockdate import StockDate
 
@@ -50,10 +51,48 @@ class RsiData:
     date: StockDate
 
 
-@dataclass
 class Portfolio:
-    ticker: str
-    qty: int
+    def __init__(self, initial_investment):
+        self._cash = initial_investment
+        self._ticker = None
+        self._quantity = 0
+
+    @property
+    def has_value(self) -> bool:
+        return self._cash > 0 or self._quantity > 0
+
+    @property
+    def ticker(self) -> str:
+        return self._ticker
+
+    def purchase(self, rsi_info: RsiData) -> None:
+        if self._ticker:
+            raise Exception(f"Cannot purchase because we already own {self._ticker}")
+        self._ticker = rsi_info.ticker
+        self._quantity = math.floor(self._cash / rsi_info.price)
+        self._cash = self._cash - (self._quantity * rsi_info.price)
+
+    def sell(self, rsi_info: RsiData) -> None:
+        if self._ticker != rsi_info.ticker:
+            raise Exception(
+                f"Cannot sell {rsi_info.ticker} because portfolio has {self._ticker}"
+            )
+        self._cash += self._quantity * rsi_info.price
+        self._quantity = 0
+        self._ticker = None
+
+    def __repr__(self):
+        return f"Stock = {self._ticker}, Qty = {self._quantity}, Cash = {self._cash}"
+
+    def get_value(self, rsi_info: RsiData) -> float:
+        if self._ticker:
+            if self._ticker != rsi_info.ticker:
+                raise Exception(
+                    f"Cannot value {rsi_info.ticker} because portfolio has {self._ticker}"
+                )
+            return self._cash + self._quantity * rsi_info.price
+        else:
+            return self._cash
 
 
 def get_lowest_rsi_ticker(stock_date: StockDate) -> RsiData:
@@ -98,12 +137,14 @@ def get_lowest_rsi_ticker(stock_date: StockDate) -> RsiData:
     return rsi_data_info
 
 
-def purchase(rsi_data, current_investment) -> Portfolio:
-    pass
-
-
-def get_ticker_rsi(ticker) -> RsiData:
-    pass
+def get_ticker_rsi(ticker: str, stock_date: StockDate) -> RsiData:
+    last_15_days = get_last_15_days(stock_date)
+    price_volumes = get_stock_prices(ticker, last_15_days)
+    if any(price[0] == -1 for price in price_volumes):
+        return None
+    rsi = calculate_rsi([price[0] for price in price_volumes])
+    price, volume = get_price_data(ticker, stock_date.date)
+    return RsiData(ticker, rsi, price, volume, stock_date)
 
 
 def sell(current_portfolio) -> float:
@@ -114,23 +155,23 @@ if __name__ == "__main__":
     start_date = StockDate(date(year=2001, month=6, day=28))
     current_date = StockDate(date(year=2001, month=6, day=28))
     last_date = StockDate(date(year=2021, month=6, day=28))
-    initial_investment = 1000000.0
-    current_investment = initial_investment
-    current_portfolio = None
-    ret_data = get_last_15_days(start_date)
-    print(ret_data)
-    while current_investment > 0 and current_date.date < last_date.date:
-        if current_portfolio:
+    portfolio = Portfolio(1000000)
+    while portfolio.has_value and current_date.date < last_date.date:
+        rsi_data = None
+        if portfolio.ticker:
             # check if the rsi of the current held ticker
             # if it is over 70 sell.
-            rsi_data = get_ticker_rsi(current_portfolio.ticker)
-            if rsi_data.rsi >= 70:
-                current_investment = sell(current_portfolio)
+            rsi_data = get_ticker_rsi(portfolio.ticker, current_date)
+            if rsi_data and rsi_data.rsi >= 70:
+                logger.info("------------------ Time to sell ---------------------")
+                portfolio.sell(rsi_data)
         else:
             # if we do have any investment find the ticker with lowest RSI
             # and buy it
             rsi_data = get_lowest_rsi_ticker(current_date)
-            current_portfolio = purchase(rsi_data, current_investment)
-        logger.info(f"Date = {current_date}, Portfolio = {current_portfolio}")
+            portfolio.purchase(rsi_data)
+        logger.info(
+            f"Date = {current_date}, Portfolio = {portfolio}, value = {portfolio.get_value(rsi_data)}"
+        )
         next_date = get_next_business_day(current_date)
         current_date = StockDate(date(next_date.year, next_date.month, next_date.day))
