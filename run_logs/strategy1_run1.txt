@@ -1722,7 +1722,7 @@ RsiData(ticker='AGI', rsi=6.321342711902346, price=14.35, volume=412500, date=<s
 2021-10-09 18:51:42.727 | INFO     | __main__:<module>:170 - Date = 2006-03-14, Portfolio = Stock = AGI, Qty = 274517, Cash = 11.474800001364201, value = 4101295.4548000013
 2021-10-09 18:51:42.797 | INFO     | __main__:<module>:170 - Date = 2006-03-15, Portfolio = Stock = AGI, Qty = 274517, Cash = 11.474800001364201, value = 4101295.4548000013
 2021-10-09 18:51:42.868 | INFO     | __main__:<module>:170 - Date = 2006-03-16, Portfolio = Stock = AGI, Qty = 274517, Cash = 11.474800001364201, value = 4101295.4548000013
-2021-10-09 18:51:42.937 | INFO     | __main__:<module>:170 - Date = 2006-03-17, Portfolio = Stock = AGI, Qty = 274517, Cash = 11.474800001364201, value = 4101295.4548000013
+2021-10-09 18:51:42.937 | INFO     | __main__:<module>:170 - Date = hist, Portfolio = Stock = AGI, Qty = 274517, Cash = 11.474800001364201, value = 4101295.4548000013
 Traceback (most recent call last):
   File "/home/rohan/stock_analysis/src/strategy1.py", line 170, in <module>
     logger.info(f"Date = {current_date}, Portfolio = {portfolio}, value = {portfolio.get_value(rsi_data)}")

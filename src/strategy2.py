@@ -1,20 +1,16 @@
 from loguru import logger
-from datetime import date
+import yfinance as yf
+import numpy as np
+import pandas as pd
+from datetime import date,datetime
 from dataclasses import dataclass
 import math
 from rsi import calculate_rsi
 from stockdate import StockDate
-
-# process the table in a way that gives us a list of tuples like [(ticker, [prices on the dates between 6/14/2001 and 6/28/2001])]
-# use that to make a dictionary like {ticker, 14-day RSI}
 from pricedatacache import get_price_data, get_stock_prices, get_all_tickers
 from utils import get_last_15_days, get_next_business_day
 
-ticker_rsi = {}
-# find the ticker with the lowest RSI and buy as much as possible
-# find the day that the RSI of said ticker goes above 70, and sell everything
-# you can calculate how much money wouldve changed in this time by taking the price from the date when the RSI goes above 70 divided by the price from the date when the RSI went below 30 and multiplying the result by how much money was put in
-# repeat until money<100 or date is 6/28/2021 (use while loop)
+pd.set_option("display.max_rows", None, "display.max_columns", None)
 
 
 @dataclass
@@ -74,9 +70,20 @@ class Portfolio:
             return self._cash
 
 
-filtered_stocks = set()
-filtered_stocks.add('AGI')
+def calculate_obv(df):
+    df["obv"] = np.where(
+        df["Close"] > df["Close"].shift(1),
+        df["Volume"],
+        np.where(df["Close"] < df["Close"].shift(1), -df["Volume"], 0),
+    ).cumsum()
 
+    return df
+
+
+def calculate_macd(df):
+    exp1 = df.ewm(span=12, adjust=False).mean()
+    exp2 = df.ewm(span=26, adjust=False).mean()
+    return exp1 - exp2
 
 def get_lowest_rsi_ticker(stock_date: StockDate) -> RsiData:
     """
@@ -88,8 +95,6 @@ def get_lowest_rsi_ticker(stock_date: StockDate) -> RsiData:
     all_tickers = get_all_tickers()
     rsi_data_info = None
     for ticker in all_tickers:
-        if ticker in filtered_stocks:
-            continue
         price_volumes = get_stock_prices(ticker, last_15_days)
         if any(price[0] == -1 for price in price_volumes):
             # logger.info(f"Ignored prices for {ticker}. prices = {prices}")
@@ -130,33 +135,48 @@ def get_ticker_rsi(ticker: str, stock_date: StockDate) -> RsiData:
     price, volume = get_price_data(ticker, stock_date.date)
     return RsiData(ticker, rsi, price, volume, stock_date)
 
+def check_stock(ticker: str, stock_date: StockDate) -> bool:
+    if calculate_obv(ticker) < 500000:
+        return False
+    if calculate_macd(ticker) < 0.1:
+        return False
+    if get_ticker_rsi(ticker,stock_date).rsi <= 50 or get_ticker_rsi(ticker,stock_date).rsi == None:
+        return False
+    return True
+
 
 if __name__ == "__main__":
+    msft = yf.Ticker("MSFT")
+    hist = msft.history(period="max")
+    df = calculate_obv(hist)
+    macd = calculate_macd(hist)
     current_date = StockDate(date(year=2001, month=6, day=28))
     last_date = StockDate(date(year=2021, month=6, day=28))
     portfolio = Portfolio(1000000)
+    rsi_data = []
     while portfolio.has_value and current_date.date < last_date.date:
-        rsi_data = None
-        if portfolio.ticker:
-            # check if the rsi of the current held ticker
-            # if it is over 70 sell.
-            rsi_data = get_ticker_rsi(portfolio.ticker, current_date)
-            if rsi_data and rsi_data.rsi >= 70 and rsi_data.price != -1:
-                logger.info("------------------ Time to sell ---------------------")
-                portfolio.sell(rsi_data)
-        else:
-            # if we do have any investment find the ticker with lowest RSI
-            # and buy it
-            rsi_data = get_lowest_rsi_ticker(current_date)
-            portfolio.purchase(rsi_data)
-        if rsi_data:
-            logger.info(
-                f"Date = {current_date}, Portfolio = {portfolio}, value = {portfolio.get_value(rsi_data)}"
-            )
-        else:
-            logger.info(
-                f"Date = {current_date}, Portfolio = {portfolio}, No rsi data."
-            )
+        for ticker in rsi_data:
+            if portfolio.ticker:
+                # check if the rsi of the current held ticker
+                # if it is over 70 sell.
+                rsi_data = get_ticker_rsi(ticker, current_date)
+                if check_stock(ticker, current_date) == False:
+                    logger.info("------------------ Time to sell ---------------------")
+                    portfolio.sell(rsi_data)
+            else:
+                # if we do have any investment find the ticker with lowest RSI
+                # and buy it
+                rsi_data = get_lowest_rsi_ticker(current_date)
+                portfolio.purchase(rsi_data)
+            if rsi_data:
+                logger.info(
+                    f"Date = {current_date}, Portfolio = {portfolio}, value = {portfolio.get_value(rsi_data)}"
+                )
+            else:
+                logger.info(
+                    f"Date = {current_date}, Portfolio = {portfolio}, No rsi data."
+                )
+        print(portfolio._cash)
 
         next_date = get_next_business_day(current_date)
         current_date = StockDate(date(next_date.year, next_date.month, next_date.day))

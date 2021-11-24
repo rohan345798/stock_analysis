@@ -31,3 +31,19 @@ create table if not exists pricedata (
     	FOREIGN KEY (dateid) REFERENCES dates (dateid)
 );
 
+create table if not exists all_data (
+    datestring varchar(50) not null,
+    ticker varchar(50) not null,
+    openbid float null,
+    high float null,
+    low float null,
+    closebid float null,
+    volume float null,
+    dividends float null,
+    splits float null,
+    obv float null,
+    macd float null,
+    macd_trend float null,
+    rsi float null,
+    primary key(datestring, ticker)
+);
