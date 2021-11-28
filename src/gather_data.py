@@ -24,6 +24,7 @@ try:
         database="stockdata",
     )
     conn.autocommit = True
+
 except mariadb.Error as e:
     print(f"Error connecting to MariaDB Platform: {e}")
     sys.exit(1)
@@ -40,9 +41,8 @@ def calculate_obv(df):
 def calculate_macd(df):
     exp1 = df[['Close']].ewm(span=12, adjust=False).mean()
     exp2 = df[['Close']].ewm(span=26, adjust=False).mean()
-    exp3 = df[['Close']].ewm(span=9, adjust=False).mean()
     df["macd"] = exp1 - exp2
-    df["macd_trend"] = exp3
+    df["macd_trend"] = df["macd"].ewm(span=9, adjust=False).mean()
 
 
 def calculate_rsi(df):
